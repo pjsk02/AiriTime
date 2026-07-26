@@ -5,11 +5,13 @@ A self-learning agent that forecasts short-horizon restaurant food demand as a
 grading itself against what actually sold. See `../PRD.md` for full product
 context.
 
-**This build is on Phase 2 "Input layer"** (see PRD.md section 14): Phase 1
-shipped a runnable skeleton with a config loader and a `/health` check; Phase
-2 adds the `SalesConnector` interface, a CSV connector, the feature store,
-and a synthetic dev-data generator (see "Feature store schema" below). There
-is no signal providers, no model registry, no self-learning loop, and no
+**This build is on Phase 3 "Signal providers"** (see PRD.md section 14):
+Phase 1 shipped a runnable skeleton with a config loader and a `/health`
+check; Phase 2 added the `SalesConnector` interface, a CSV connector, the
+feature store, and a synthetic dev-data generator; Phase 3 adds the
+`SignalProvider` interface, holiday/weather/event providers, and the
+`merge_signals` broadcast step (see "Feature store schema" and "Signal
+columns" below). There is no model registry, no self-learning loop, and no
 Maritime wiring yet — those arrive in later roadmap phases.
 
 ## Install
@@ -86,3 +88,37 @@ without disturbing them.
   plausible fake sales history (baseline + weekly seasonality + noise, per
   the PRD section 5 factor-model framing) for local development, also
   returned as normalized rows directly upsertable into a `FeatureStore`.
+
+## Signal columns
+
+Phase 3 adds external, per-`(location, date)` signal columns to the same
+feature store schema above (still keyed by `(location, date, item)` --
+signals are broadcast across every item row sharing a `(location, date)`):
+
+| Column         | Type    | Notes                                                        |
+|----------------|---------|---------------------------------------------------------------|
+| `is_holiday`   | `int`   | 0/1. From `app/signals/holidays.py::HolidayProvider`.          |
+| `holiday_name` | `str`   | Empty string `""` when not a holiday.                          |
+| `temp_c`       | `float` | Daily mean temperature. From `app/signals/weather.py::WeatherProvider`. |
+| `precip_mm`    | `float` | Daily precipitation total.                                     |
+| `is_rain`      | `int`   | 0/1, derived from `precip_mm > 0`.                              |
+| `event_count`  | `int`   | Number of local events that day. From `app/signals/events.py::EventProvider`. |
+| `event_impact` | `float` | 0..1, `min(1.0, event_count / 5)` -- a raw derived feature, not a weighting/importance model. |
+
+- `app/signals/base.py::SignalProvider` is the abstract interface
+  (`fetch(location, date_range) -> pd.DataFrame`) every external signal
+  source implements, mirroring `SalesConnector` but keyed by
+  `(location, date)` instead of `(location, date, item)`.
+- Holidays and events are **sparse** providers: they only return rows for
+  dates where something actually happened (a holiday, an event). Weather is
+  **dense**: it returns one row per requested date.
+- `app/signals/merge.py::merge_signals(sales_rows, signal_frames,
+  fill_defaults=None) -> pd.DataFrame` left-merges each signal frame onto
+  `sales_rows` by `(location, date)`, broadcasting each signal row across
+  every item row that shares its `(location, date)` -- row count and order
+  are unchanged, no row multiplication. After merging, sparse-provider gaps
+  are filled using `fill_defaults` (defaults to the module-level
+  `DEFAULT_FILL = {"is_holiday": 0, "holiday_name": "", "event_count": 0,
+  "event_impact": 0.0}` if not overridden; weather columns need no fill
+  since they're already dense). The result is ready for
+  `FeatureStore.upsert(...)`.
