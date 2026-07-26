@@ -217,18 +217,17 @@
 
       <div class="panel">
         <h3>Signal providers</h3>
-        <p class="desc">External context, fetched per location + date. Search fans out across these.</p>
-        <div class="src"><span class="name">Events &mdash; concerts, sports, festivals<small>Ticketmaster &middot; PredictHQ</small></span><button class="toggle" data-pill><span class="pill on">on &middot; high weight</span></button></div>
-        <div class="src"><span class="name">Public holidays<small>Nager.Date</small></span><button class="toggle" data-pill><span class="pill on">on</span></button></div>
-        <div class="src"><span class="name">Weather<small>Open-Meteo &middot; Visual Crossing</small></span><button class="toggle" data-pill><span class="pill low">on &middot; down-weighted @7&ndash;13d</span></button></div>
+        <p class="desc">External context, fetched per location + date. Search fans out across these. On/off state below reflects the real, currently-loaded <code>config.yaml</code> factor toggles (read-only).</p>
+        <div class="src"><span class="name">Events &mdash; concerts, sports, festivals<small>Ticketmaster &middot; PredictHQ</small></span><span class="pill" id="sig-events">&hellip;</span></div>
+        <div class="src"><span class="name">Public holidays<small>Nager.Date</small></span><span class="pill" id="sig-holidays">&hellip;</span></div>
+        <div class="src"><span class="name">Weather<small>Open-Meteo &middot; Visual Crossing</small></span><span class="pill" id="sig-weather">&hellip;</span></div>
       </div>
 
       <div class="panel">
         <h3>Loyalty signals</h3>
-        <p class="desc">AiriWheels&rsquo; own edge &mdash; data no POS-only rival has.</p>
-        <div class="src"><span class="name">Repeat-visit cadence<small>who&rsquo;s due back, and when</small></span><button class="toggle" data-pill><span class="pill on">on</span></button></div>
-        <div class="src"><span class="name">Voucher-lift model<small>true incremental demand</small></span><button class="toggle" data-pill><span class="pill on">on</span></button></div>
-        <div class="src"><span class="name">Cohort trends<small>new vs regulars</small></span><button class="toggle" data-pill><span class="pill on">on</span></button></div>
+        <p class="desc">AiriWheels&rsquo; own edge &mdash; data no POS-only rival has. Not yet wired into the factor model (Phase 1 placeholder toggle).</p>
+        <div class="src"><span class="name">Loyalty cadence<small>who&rsquo;s due back, and when</small></span><span class="pill" id="sig-loyalty">&hellip;</span></div>
+        <div class="src"><span class="name">Day-of-week seasonality<small>always fit fresh from history</small></span><span class="pill" id="sig-dow">&hellip;</span></div>
       </div>
     </div>
 
@@ -236,51 +235,48 @@
       <div class="panel">
         <h3>Model registry</h3>
         <p class="desc">Swap forecasters behind one interface &mdash; fit(history, features) &rarr; P10/P50/P90.</p>
-        <label class="radio"><input type="radio" name="model" checked><span>Factor model &mdash; quantile regression<small>transparent, explainable by design &middot; <b>active</b></small></span></label>
-        <label class="radio"><input type="radio" name="model"><span>Gradient-boosted quantiles<small>higher accuracy, less interpretable</small></span></label>
-        <label class="radio"><input type="radio" name="model"><span>TimesFM (foundation model)<small>experimental &middot; benchmarking</small></span></label>
+        <label class="radio"><input type="radio" name="model" checked><span>Factor model &mdash; quantile regression<small>transparent, explainable by design &middot; <b>active</b> (<span id="model-name">&hellip;</span>)</small></span></label>
+        <label class="radio"><input type="radio" name="model" disabled><span>Gradient-boosted quantiles<small>higher accuracy, less interpretable &middot; not implemented</small></span></label>
+        <label class="radio"><input type="radio" name="model" disabled><span>TimesFM (foundation model)<small>experimental &middot; not implemented</small></span></label>
       </div>
 
       <div class="panel">
         <h3>Factor weights</h3>
-        <p class="desc">How much each signal moves the forecast at this horizon.</p>
-        <div class="factor"><span class="name">Day of week</span><span class="barwrap"><span class="bar" style="width:85%"></span></span><span class="wt">.85</span></div>
-        <div class="factor"><span class="name">Confirmed events</span><span class="barwrap"><span class="bar" style="width:80%"></span></span><span class="wt">.80</span></div>
-        <div class="factor"><span class="name">Seasonality</span><span class="barwrap"><span class="bar" style="width:55%"></span></span><span class="wt">.55</span></div>
-        <div class="factor"><span class="name">Loyalty cadence</span><span class="barwrap"><span class="bar" style="width:50%"></span></span><span class="wt">.50</span></div>
-        <div class="factor"><span class="name">Holidays</span><span class="barwrap"><span class="bar" style="width:45%"></span></span><span class="wt">.45</span></div>
-        <div class="factor"><span class="name">Trend</span><span class="barwrap"><span class="bar" style="width:40%"></span></span><span class="wt">.40</span></div>
-        <div class="factor low"><span class="name">Weather</span><span class="barwrap"><span class="bar" style="width:12%"></span></span><span class="wt">.12</span></div>
+        <p class="desc">Real <code>FactorModel.DEFAULT_WEIGHTS</code> currently used to fit/predict &mdash; from <code>GET /config</code>, not painted-in.</p>
+        <div id="factor-weights-list">
+          <div class="factor"><span class="name">Day of week</span><span class="barwrap"><span class="bar" style="width:100%"></span></span><span class="wt">unweighted*</span></div>
+        </div>
+        <p class="note" style="margin-top:8px;">*Day of week has no scalar weight of its own &mdash; it's re-fit fresh from history on every <code>fit()</code> call.</p>
       </div>
     </div>
 
     <div class="eng-grid two">
       <div class="panel">
         <h3>Forecast config</h3>
-        <p class="desc">The knobs that shape the output owners consume.</p>
-        <div class="cfg-row"><span class="k">Horizon<small>window served to the owner app</small></span><span class="v">+7 &ndash; +13 days &middot; Sun 2 &ndash; Sat 8 Aug</span></div>
-        <div class="cfg-row"><span class="k">Refresh<small>rolling re-forecast</small></span><span class="v">daily &middot; 06:00 (cron)</span></div>
+        <p class="desc">The knobs that shape the output owners consume. Read-only &mdash; from <code>GET /config</code>.</p>
+        <div class="cfg-row"><span class="k">Horizon<small>window served to the owner app</small></span><span class="v" id="cfg-horizon">&hellip;</span></div>
+        <div class="cfg-row"><span class="k">Model</span><span class="v" id="cfg-model">&hellip;</span></div>
         <div class="cfg-row">
-          <span class="k">Cost of running out : waste<small>sets the order quantile</small></span>
-          <span><input type="range" id="ratio" min="1" max="5" step="1" value="3" aria-label="under-prep to over-prep cost ratio"></span>
+          <span class="k">Cost of running out : waste<small>Cu : Co, from config.yaml (read-only)</small></span>
+          <span class="v" id="cfg-cost-ratio">&hellip;</span>
         </div>
-        <div class="cfg-row"><span class="k">Resulting order target</span><span class="qout" id="qout">3 : 1 &middot; order at P75</span></div>
+        <div class="cfg-row"><span class="k">Resulting order target</span><span class="qout" id="qout">&hellip;</span></div>
       </div>
 
       <div class="panel">
         <h3>Model health</h3>
-        <p class="desc">Backtested on this venue's own history, graded nightly against actuals.</p>
+        <p class="desc">From the most recent <code>/run</code>'s walk-forward backtest, via <code>GET /forecast/latest</code>.</p>
         <div class="health">
-          <div class="h"><div class="v good">+23%</div><div class="l">skill vs naive</div></div>
-          <div class="h"><div class="v">11.4%</div><div class="l">wMAPE (7&ndash;13d)</div></div>
-          <div class="h"><div class="v good">stable</div><div class="l">drift status</div></div>
-          <div class="h"><div class="v">26 Jul</div><div class="l">last recalibrated</div></div>
+          <div class="h"><div class="v good" id="health-skill">&hellip;</div><div class="l">skill vs naive</div></div>
+          <div class="h"><div class="v" id="health-wmape">&hellip;</div><div class="l">wMAPE (7&ndash;13d)</div></div>
+          <div class="h"><div class="v" id="health-generated">&hellip;</div><div class="l">generated for</div></div>
         </div>
-        <p class="note" style="margin-top:14px;">Skill = error reduction vs a &ldquo;same-day-last-week&rdquo; baseline. Drift watch flags when errors on a factor start trending &mdash; then the loop retrains.</p>
+        <p class="note" style="margin-top:14px;">Skill = error reduction vs a &ldquo;same-day-last-week&rdquo; baseline.</p>
       </div>
     </div>
 
     <div class="publish">
+      <span class="note" id="publishStatus" style="margin-right:12px;"></span>
       <button class="btn slate" id="publishBtn">Publish to owner app &rarr;</button>
     </div>
   </section>
@@ -300,11 +296,11 @@
   var ownerApp = document.getElementById("app");
   if(ownerApp) ownerApp.style.display = "none";
 
-  /* ---------- engineer studio interactivity (ported verbatim, scoped to #studioRoot) ---------- */
+  /* ---------- Data connectors panel: cosmetic-only, no real backing data (unchanged) ---------- */
   root.querySelectorAll("[data-pill]").forEach(function(btn){
     var pill=btn.querySelector(".pill");
     btn.addEventListener("click",function(){
-      if(pill.classList.contains("low")) return; // weather stays down-weighted in demo
+      if(pill.classList.contains("low")) return;
       var on=pill.classList.contains("on");
       pill.classList.toggle("on",!on); pill.classList.toggle("off",on);
       if(!on && (pill.textContent==="available")) pill.textContent="connected";
@@ -312,11 +308,116 @@
       else pill.textContent="on";
     });
   });
-  var ratio=root.querySelector("#ratio"), qout=root.querySelector("#qout");
-  if(ratio){ ratio.addEventListener("input",function(){
-    var r=+ratio.value, q=Math.round(r/(r+1)*100/5)*5;
-    qout.textContent=r+" : 1 · order at P"+q;
-  }); }
+
+  /* ---------- real data: GET /config + GET /forecast/latest ---------- */
+  function setSignalPill(el, on, extra){
+    if(!el) return;
+    el.classList.remove("on","off","low");
+    el.classList.add(on ? (extra||"on") : "off");
+    el.textContent = on ? ("on" + (extra==="low" ? " · down-weighted @7–13d" : "")) : "off";
+  }
+
+  function renderConfig(config){
+    var h = config.horizon;
+    root.querySelector("#cfg-horizon").textContent = "+" + h.start_offset + " – +" + h.end_offset + " days";
+    root.querySelector("#cfg-model").textContent = config.model_name;
+    root.querySelector("#model-name").textContent = config.model_name;
+    var cr = config.cost_ratio;
+    root.querySelector("#cfg-cost-ratio").textContent =
+      cr.cost_underprep + " : " + cr.cost_overprep;
+    var q = Math.round(config.critical_fractile * 100);
+    root.querySelector("#qout").textContent =
+      cr.cost_underprep + " : " + cr.cost_overprep + " · order at P" + q;
+
+    var signals = config.signals || {};
+    setSignalPill(root.querySelector("#sig-events"), !!signals.events);
+    setSignalPill(root.querySelector("#sig-holidays"), !!signals.holidays);
+    setSignalPill(root.querySelector("#sig-weather"), !!signals.weather, "low");
+    setSignalPill(root.querySelector("#sig-loyalty"), !!signals.loyalty);
+    setSignalPill(root.querySelector("#sig-dow"), !!signals.day_of_week);
+
+    var fw = config.factor_weights || {};
+    var list = root.querySelector("#factor-weights-list");
+    var rows = [
+      ["Holidays", fw.holiday_weight],
+      ["Confirmed events", fw.event_weight],
+      ["Rain (pre-cap)", fw.rain_weight],
+    ];
+    rows.forEach(function(r){
+      if(r[1] == null) return;
+      var pct = Math.round(Math.min(1, r[1]) * 100);
+      var row = document.createElement("div");
+      row.className = "factor";
+      row.innerHTML = '<span class="name">' + r[0] + '</span>' +
+        '<span class="barwrap"><span class="bar" style="width:' + pct + '%"></span></span>' +
+        '<span class="wt">' + r[1].toFixed(2) + '</span>';
+      list.appendChild(row);
+    });
+    if(fw.weather_contribution_cap != null){
+      var cap = document.createElement("div");
+      cap.className = "factor low";
+      var capPct = Math.round(Math.min(1, fw.weather_contribution_cap) * 100);
+      cap.innerHTML = '<span class="name">Weather (capped)</span>' +
+        '<span class="barwrap"><span class="bar" style="width:' + capPct + '%"></span></span>' +
+        '<span class="wt">' + fw.weather_contribution_cap.toFixed(2) + '</span>';
+      list.appendChild(cap);
+    }
+  }
+
+  function renderHealth(doc){
+    if(!doc){
+      root.querySelector("#health-skill").textContent = "—";
+      root.querySelector("#health-wmape").textContent = "—";
+      root.querySelector("#health-generated").textContent = "no forecast yet";
+      return;
+    }
+    var skillPct = Math.round((doc.skill_vs_naive || 0) * 100);
+    var wmapePct = Math.round((doc.wmape || 0) * 100 * 10) / 10;
+    root.querySelector("#health-skill").textContent = (skillPct >= 0 ? "+" : "") + skillPct + "%";
+    root.querySelector("#health-wmape").textContent = wmapePct + "%";
+    root.querySelector("#health-generated").textContent = doc.generated_for_date || "—";
+  }
+
+  function loadConfig(){
+    return fetch("/config").then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
+      .then(renderConfig);
+  }
+  function loadHealth(){
+    return fetch("/forecast/latest").then(function(r){
+      if(r.status === 404) return null;
+      if(!r.ok) throw new Error("forecast fetch failed");
+      return r.json();
+    }).then(renderHealth);
+  }
+
+  loadConfig().catch(function(){ root.querySelector("#cfg-horizon").textContent = "could not load /config"; });
+  loadHealth().catch(function(){ renderHealth(null); });
+
+  /* ---------- Publish: POST /run, then switch to owner view and refetch /forecast/latest ---------- */
+  var publishBtn = root.querySelector("#publishBtn");
+  var publishStatus = root.querySelector("#publishStatus");
+  publishBtn.addEventListener("click", function(){
+    publishBtn.disabled = true;
+    publishStatus.textContent = "Regenerating forecast…";
+    fetch("/run", { method: "POST" })
+      .then(function(r){ if(!r.ok) throw new Error("POST /run failed (" + r.status + ")"); return r.json(); })
+      .then(function(){
+        publishStatus.textContent = "Published — refreshing owner view…";
+        if(ownerApp) ownerApp.style.display = "";
+        root.classList.remove("active");
+        if(typeof window.loadForecastFromApi === "function"){
+          return window.loadForecastFromApi();
+        }
+      })
+      .then(function(){
+        publishStatus.textContent = "";
+        publishBtn.disabled = false;
+      })
+      .catch(function(err){
+        publishStatus.textContent = "Publish failed: " + err.message;
+        publishBtn.disabled = false;
+      });
+  });
 })();
 </script>
 
@@ -430,16 +531,23 @@ function show(which){
   document.getElementById("main").style.display  = which==="main"?"block":"none";
 }
 
-// load: try fetch, fall back to manual file pick (handles file:// CORS)
-fetch("forecast_latest.json").then(r=>{ if(!r.ok) throw 0; return r.json(); })
-  .then(load).catch(()=>{
-    show("empty");
-    document.getElementById("filePick").addEventListener("change",e=>{
-      const f=e.target.files[0]; if(!f) return;
-      const rd=new FileReader(); rd.onload=()=>{ try{ load(JSON.parse(rd.result)); }catch(err){ alert("That doesn't look like a valid forecast file."); } };
-      rd.readAsText(f);
-    });
+// load: prefer the live API (same-origin FastAPI), fall back to the static
+// JSON copy, then to manual file pick (handles file:// CORS / no backend).
+function loadForecastFromApi(){
+  return fetch("/forecast/latest").then(r=>{ if(!r.ok) throw 0; return r.json(); })
+    .then(load)
+    .catch(()=> fetch("forecast_latest.json").then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(load));
+}
+window.loadForecastFromApi = loadForecastFromApi;
+
+loadForecastFromApi().catch(()=>{
+  show("empty");
+  document.getElementById("filePick").addEventListener("change",e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const rd=new FileReader(); rd.onload=()=>{ try{ load(JSON.parse(rd.result)); }catch(err){ alert("That doesn't look like a valid forecast file."); } };
+    rd.readAsText(f);
   });
+});
 </script>
 </body>
 </html>

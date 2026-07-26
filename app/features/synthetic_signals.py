@@ -113,3 +113,45 @@ def generate_synthetic_future_signals(
             "event_impact": event_impact,
         }
     )
+
+
+# Illustrative demo enrichment only -- see `add_demo_weekend_event` below.
+_DEMO_EVENT_WEEKDAYS_COUNTS = {5: 2, 4: 1}  # Saturday: 2 events, Friday: 1 event.
+
+
+def add_demo_weekend_event(signals: pd.DataFrame) -> pd.DataFrame:
+    """Deterministically layer a confirmed local event onto weekend rows, for demo richness only.
+
+    Illustrative-demo helper, separate from `generate_synthetic_future_signals`
+    itself: callers opt in by applying this to a FUTURE signal window only
+    (never to the historical signals merged onto training/backtest data), so
+    the model, the backtest, and the learning loop never see this override --
+    it exists purely so the owner UI's "why this number" panel can show a
+    multi-reason peak day (e.g. "Weekend" + "Nearby event") instead of a
+    single day-of-week factor, without touching FactorModel's thresholds.
+
+    Deterministically sets `event_count`/`event_impact` (using the same
+    `event_impact = min(1.0, event_count / _IMPACT_CAP)` derivation as
+    `generate_synthetic_future_signals`) on every Saturday (2 events) and
+    Friday (1 event) row present in `signals` -- no RNG involved, so this is
+    reproducible regardless of `seed`. Rows for other weekdays, and every
+    other column, are returned unchanged. A row already carrying a stronger
+    synthetic event (`event_count` from the RNG already >= the demo count)
+    is left as-is rather than overwritten downward.
+
+    Args:
+        signals: a `generate_synthetic_future_signals`-shaped DataFrame for
+            the FUTURE prediction window only.
+
+    Returns:
+        A copy of `signals` with `event_count`/`event_impact` raised (never
+        lowered) on Friday/Saturday rows.
+    """
+    enriched = signals.copy()
+    weekday = enriched["date"].apply(lambda d: d.weekday())
+    for wd, demo_count in _DEMO_EVENT_WEEKDAYS_COUNTS.items():
+        mask = weekday == wd
+        boosted_count = np.maximum(enriched.loc[mask, "event_count"], demo_count)
+        enriched.loc[mask, "event_count"] = boosted_count
+        enriched.loc[mask, "event_impact"] = np.minimum(1.0, boosted_count / _IMPACT_CAP)
+    return enriched

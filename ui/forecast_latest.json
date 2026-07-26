@@ -107,31 +107,43 @@
           "date": "2026-08-07",
           "dow": "Fri",
           "p10": 24,
-          "p50": 29,
-          "p90": 34,
-          "plan_for": 31,
+          "p50": 30,
+          "p90": 35,
+          "plan_for": 32,
           "why": [
             {
               "factor": "day_of_week",
               "direction": "up",
               "text": "Weekend (Friday)",
               "contribution": 4.7653774509803934
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 0.7112975
             }
           ]
         },
         {
           "date": "2026-08-08",
           "dow": "Sat",
-          "p10": 24,
-          "p50": 29,
-          "p90": 34,
-          "plan_for": 31,
+          "p10": 25,
+          "p50": 30,
+          "p90": 36,
+          "plan_for": 33,
           "why": [
             {
               "factor": "day_of_week",
               "direction": "up",
               "text": "Weekend (Saturday)",
               "contribution": 4.863972222222224
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 1.422595
             }
           ]
         }
@@ -229,9 +241,9 @@
         {
           "date": "2026-08-07",
           "dow": "Fri",
-          "p10": 26,
-          "p50": 33,
-          "p90": 40,
+          "p10": 27,
+          "p50": 34,
+          "p90": 41,
           "plan_for": 36,
           "why": [
             {
@@ -239,22 +251,34 @@
               "direction": "up",
               "text": "Weekend (Friday)",
               "contribution": 5.123955882352941
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 0.8658225
             }
           ]
         },
         {
           "date": "2026-08-08",
           "dow": "Sat",
-          "p10": 26,
-          "p50": 34,
-          "p90": 41,
-          "plan_for": 37,
+          "p10": 28,
+          "p50": 35,
+          "p90": 42,
+          "plan_for": 38,
           "why": [
             {
               "factor": "day_of_week",
               "direction": "up",
               "text": "Weekend (Saturday)",
               "contribution": 5.935361111111112
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 1.731645
             }
           ]
         }
@@ -352,32 +376,44 @@
         {
           "date": "2026-08-07",
           "dow": "Fri",
-          "p10": 33,
-          "p50": 42,
-          "p90": 50,
-          "plan_for": 45,
+          "p10": 35,
+          "p50": 43,
+          "p90": 51,
+          "plan_for": 46,
           "why": [
             {
               "factor": "day_of_week",
               "direction": "up",
               "text": "Weekend (Friday)",
               "contribution": 6.6856813725490225
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 1.0489825
             }
           ]
         },
         {
           "date": "2026-08-08",
           "dow": "Sat",
-          "p10": 33,
-          "p50": 42,
-          "p90": 50,
-          "plan_for": 45,
+          "p10": 35,
+          "p50": 44,
+          "p90": 52,
+          "plan_for": 47,
           "why": [
             {
               "factor": "day_of_week",
               "direction": "up",
               "text": "Weekend (Saturday)",
               "contribution": 6.651694444444448
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 2.097965
             }
           ]
         }
@@ -475,32 +511,44 @@
         {
           "date": "2026-08-07",
           "dow": "Fri",
-          "p10": 39,
-          "p50": 49,
-          "p90": 58,
-          "plan_for": 53,
+          "p10": 40,
+          "p50": 50,
+          "p90": 60,
+          "plan_for": 54,
           "why": [
             {
               "factor": "day_of_week",
               "direction": "up",
               "text": "Weekend (Friday)",
               "contribution": 7.655509803921563
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 1.2322700000000002
             }
           ]
         },
         {
           "date": "2026-08-08",
           "dow": "Sat",
-          "p10": 38,
-          "p50": 48,
-          "p90": 58,
-          "plan_for": 53,
+          "p10": 41,
+          "p50": 51,
+          "p90": 61,
+          "plan_for": 55,
           "why": [
             {
               "factor": "day_of_week",
               "direction": "up",
               "text": "Weekend (Saturday)",
               "contribution": 7.283222222222218
+            },
+            {
+              "factor": "event",
+              "direction": "up",
+              "text": "Nearby event drawing extra traffic",
+              "contribution": 2.4645400000000004
             }
           ]
         }

@@ -13,7 +13,7 @@ import pandas as pd
 
 from app.config import load_config
 from app.features.synthetic import generate_synthetic_sales
-from app.features.synthetic_signals import generate_synthetic_future_signals
+from app.features.synthetic_signals import add_demo_weekend_event, generate_synthetic_future_signals
 from app.learning.actuals import ActualsStore
 from app.models.backtest import walk_forward_backtest
 from app.models.factor_model import FactorModel
@@ -50,6 +50,10 @@ def run_forecast_pipeline(output_path: str = DEFAULT_OUTPUT_PATH) -> dict:
     window_end = reference_today + timedelta(days=config.horizon_end)
 
     future_signals = generate_synthetic_future_signals(LOCATION, (window_start, window_end), seed=1)
+    # Demo-only enrichment of the FUTURE window so peak weekend days show a
+    # multi-reason "why" (day-of-week + event) in the owner UI -- never
+    # applied to history_signals above, so training/backtest data is untouched.
+    future_signals = add_demo_weekend_event(future_signals)
     items = sorted(history["item"].unique())
     future_features = future_signals.merge(pd.DataFrame({"item": items}), how="cross")
 
