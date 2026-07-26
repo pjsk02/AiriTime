@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AiriWheels -- Demand Forecast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #F3F0E7;
+    --card: #FBFAF5;
+    --ink: #23201B;
+    --muted: #7A7362;
+    --hairline: #E0DACB;
+    --herb: #2F6B4F;
+    --herb-soft: #CFE0D3;
+    --herb-tint: #E8F0E9;
+    --amber: #C0782A;
+    --amber-tint: #F6E9D5;
+    --slate: #2A3742;
+
+    --font-display: 'Bricolage Grotesque', Georgia, serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+  }
+
+  body {
+    padding: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .mono { font-family: var(--font-mono); }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 3px solid var(--slate);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Header ---------- */
+
+  header.app-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  header.app-header .titles h1 {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  header.app-header .titles .sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  header.app-header .titles .sub .model-name {
+    font-family: var(--font-mono);
+    color: var(--ink);
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 10px 16px;
+    min-width: 140px;
+  }
+
+  .stat .stat-value {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .stat .stat-value.positive { color: var(--herb); }
+  .stat .stat-value.negative { color: var(--amber); }
+
+  /* ---------- Tabs ---------- */
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .tab-btn {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--card);
+    color: var(--ink);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .tab-btn[aria-selected="true"] {
+    background: var(--ink);
+    color: var(--card);
+    border-color: var(--ink);
+  }
+
+  /* ---------- Funnel strip ---------- */
+
+  .funnel-section {
+    margin-bottom: 24px;
+  }
+
+  .funnel-strip {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 6px 4px 10px;
+  }
+
+  .funnel-col-btn {
+    flex: 1 1 0;
+    min-width: 84px;
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 10px 6px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .funnel-col-btn.busiest {
+    background: var(--amber-tint);
+    border-color: var(--amber);
+  }
+
+  .funnel-col-btn[aria-pressed="true"] {
+    box-shadow: 0 0 0 2px var(--slate) inset;
+  }
+
+  .funnel-plot {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .funnel-band {
+    position: absolute;
+    background: var(--herb-soft);
+    border-radius: 999px;
+    transition: top 0.6s ease, height 0.6s ease;
+  }
+
+  .funnel-col-btn.busiest .funnel-band {
+    background: var(--amber-tint);
+    border: 1.5px solid var(--amber);
+  }
+
+  .funnel-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--herb);
+    box-shadow: 0 0 0 3px var(--card);
+    transform: translate(-50%, -50%);
+    left: 50%;
+  }
+
+  .funnel-label {
+    position: absolute;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink);
+    white-space: nowrap;
+    background: var(--card);
+    padding: 0 3px;
+    border-radius: 3px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .funnel-label.p50-label {
+    font-weight: 600;
+    color: var(--herb);
+  }
+
+  .funnel-day-label {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .funnel-date-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ---------- Detail panel ---------- */
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 720px) {
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+
+  .plan-values {
+    display: flex;
+    gap: 18px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+  }
+
+  .plan-values .pv {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .plan-values .pv .pv-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .plan-values .pv .pv-value {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  .plan-for-headline {
+    font-family: var(--font-mono);
+    font-size: 34px;
+    font-weight: 600;
+    color: var(--herb);
+    margin: 6px 0;
+  }
+
+  .plan-note {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  ul.why-list {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  ul.why-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 8px;
+  }
+
+  ul.why-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .why-arrow {
+    font-size: 14px;
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  .why-arrow.up { color: var(--herb); }
+  .why-arrow.down { color: var(--amber); }
+
+  .why-text { flex: 1 1 auto; }
+
+  .why-contribution {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    flex: 0 0 auto;
+  }
+
+  /* ---------- Table ---------- */
+
+  .table-section {
+    margin-bottom: 24px;
+  }
+
+  table.weekly-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  table.weekly-table th,
+  table.weekly-table td {
+    border-bottom: 1px solid var(--hairline);
+    border-right: 1px solid var(--hairline);
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 13px;
+  }
+
+  table.weekly-table th:first-child,
+  table.weekly-table td:first-child {
+    text-align: left;
+  }
+
+  table.weekly-table th:last-child,
+  table.weekly-table td:last-child {
+    border-right: none;
+  }
+
+  table.weekly-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  table.weekly-table thead th {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    background: var(--herb-tint);
+  }
+
+  table.weekly-table tbody td.item-name {
+    font-family: var(--font-body);
+    font-weight: 600;
+  }
+
+  table.weekly-table tbody td.mono-cell {
+    font-family: var(--font-mono);
+  }
+
+  table.weekly-table tbody td.week-total {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    background: var(--herb-tint);
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  /* ---------- Voucher callout ---------- */
+
+  .voucher-card {
+    background: var(--ink);
+    color: var(--card);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .voucher-card .voucher-text {
+    max-width: 60ch;
+  }
+
+  .voucher-card .voucher-text .voucher-eyebrow {
+    color: var(--herb-soft);
+  }
+
+  .voucher-card .voucher-text p {
+    margin: 6px 0 0;
+    font-size: 15px;
+  }
+
+  .voucher-btn {
+    background: var(--amber);
+    color: var(--card);
+    border: none;
+    border-radius: 999px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    flex: 0 0 auto;
+    transition: filter 0.15s ease;
+  }
+
+  .voucher-btn:hover { filter: brightness(1.08); }
+  .voucher-btn:active { filter: brightness(0.94); }
+
+  /* ---------- Studio toggle (optional / static) ---------- */
+
+  .studio-toggle {
+    margin-bottom: 24px;
+  }
+
+  .studio-toggle summary {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    padding: 8px 4px;
+  }
+
+  .studio-toggle .studio-body {
+    padding: 12px 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ---------- Empty / error states ---------- */
+
+  .empty-state {
+    background: var(--card);
+    border: 1px dashed var(--hairline);
+    border-radius: 14px;
+    padding: 32px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  .empty-state h2 {
+    color: var(--ink);
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+
+  .empty-state code {
+    font-family: var(--font-mono);
+    background: var(--herb-tint);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+
+  .empty-state pre {
+    display: inline-block;
+    text-align: left;
+    background: var(--ink);
+    color: var(--card);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    margin-top: 12px;
+  }
+
+  [hidden] { display: none !important; }
+
+  footer.app-footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+  <div id="empty-state" class="empty-state" hidden>
+    <h2>No forecast available</h2>
+    <p>Run the model to generate <code>app/output/forecast_latest.json</code>, then copy it to
+      <code>ui/forecast_latest.json</code> and reload this page.</p>
+    <p id="empty-state-detail" class="mono" style="font-size:12px;"></p>
+    <p>If you opened this file directly (<code>file://</code>), your browser may be blocking the
+      local JSON fetch. Serve the <code>ui/</code> folder over HTTP instead:</p>
+    <pre>cd ui
+python -m http.server</pre>
+    <p>Then visit <code>http://localhost:8000/forecast.html</code>.</p>
+  </div>
+
+  <div id="app-root" hidden>
+
+    <header class="app-header">
+      <div class="titles">
+        <div class="eyebrow" id="header-eyebrow">DEMAND FORECAST</div>
+        <h1 id="header-location">--</h1>
+        <div class="sub">
+          Week of <span id="header-window">--</span> &middot;
+          model <span class="model-name" id="header-model">--</span>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="eyebrow">SKILL VS NAIVE</div>
+          <div class="stat-value mono" id="stat-skill">--</div>
+        </div>
+        <div class="stat">
+          <div class="eyebrow">WMAPE</div>
+          <div class="stat-value mono" id="stat-wmape">--</div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Menu items"></nav>
+
+    <section class="funnel-section card">
+      <h2 style="font-size:16px; margin-bottom: 12px;" id="funnel-title">Weekly outlook</h2>
+      <div class="funnel-strip" id="funnel-strip"></div>
+    </section>
+
+    <section class="detail-grid">
+      <div class="card" id="plan-card">
+        <div class="eyebrow">PLAN FOR</div>
+        <h3 id="plan-day-title" style="font-size:18px; margin-top:4px;">--</h3>
+        <div class="plan-values">
+          <div class="pv">
+            <span class="pv-label">P10</span>
+            <span class="pv-value" id="plan-p10">--</span>
+          </div>
+          <div class="pv">
+            <span class="pv-label">P50</span>
+            <span class="pv-value" id="plan-p50">--</span>
+          </div>
+          <div class="pv">
+            <span class="pv-label">P90</span>
+            <span class="pv-value" id="plan-p90">--</span>
+          </div>
+        </div>
+        <div class="plan-for-headline" id="plan-for-headline">--</div>
+        <div class="plan-note" id="plan-note">--</div>
+      </div>
+
+      <div class="card" id="why-card">
+        <div class="eyebrow">WHY THIS NUMBER</div>
+        <h3 id="why-day-title" style="font-size:18px; margin-top:4px;">--</h3>
+        <ul class="why-list" id="why-list"></ul>
+      </div>
+    </section>
+
+    <section class="table-section card">
+      <h2 style="font-size:16px; margin-bottom: 12px;">Weekly plan table (P50 by day)</h2>
+      <div class="table-scroll">
+        <table class="weekly-table" id="weekly-table">
+          <thead>
+            <tr id="weekly-table-head"></tr>
+          </thead>
+          <tbody id="weekly-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="voucher-card">
+      <div class="voucher-text">
+        <div class="eyebrow voucher-eyebrow">SLOW-DAY LEVER</div>
+        <p id="voucher-message">--</p>
+      </div>
+      <button class="voucher-btn" id="voucher-btn" type="button">Send vouchers</button>
+    </section>
+
+    <details class="studio-toggle card">
+      <summary>Engineer studio (read-only config preview)</summary>
+      <div class="studio-body">
+        <div>model: <span class="mono" id="studio-model">--</span></div>
+        <div>quantile_target (critical fractile): <span class="mono" id="studio-quantile">--</span></div>
+        <div>horizon offsets: <span class="mono" id="studio-horizon">--</span></div>
+        <div>skill_vs_naive: <span class="mono" id="studio-skill">--</span></div>
+        <div>wmape: <span class="mono" id="studio-wmape">--</span></div>
+      </div>
+    </details>
+
+    <footer class="app-footer">
+      Generated for <span id="footer-date" class="mono">--</span> &middot; AiriWheels owner view
+    </footer>
+
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var state = {
+    data: null,
+    selectedItemIndex: 0,
+    selectedDayIndex: 0
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function fmtPercent(x, signed) {
+    var pct = x * 100;
+    var sign = signed && pct >= 0 ? "+" : "";
+    return sign + pct.toFixed(1) + "%";
+  }
+
+  function fmtSignedNumber(x) {
+    var sign = x >= 0 ? "+" : "";
+    return sign + x.toFixed(1);
+  }
+
+  function fmtShortDate(isoDate) {
+    // isoDate: "YYYY-MM-DD" -> "Aug 2"
+    var parts = isoDate.split("-");
+    var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+    var dt = new Date(Date.UTC(y, m, d));
+    var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return months[dt.getUTCMonth()] + " " + dt.getUTCDate();
+  }
+
+  function fmtShortDateSlash(isoDate) {
+    var parts = isoDate.split("-");
+    return parseInt(parts[1], 10) + "/" + parseInt(parts[2], 10);
+  }
+
+  function ordinalSuffix(n) {
+    var mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 13) return "th";
+    switch (n % 10) {
+      case 1: return "st";
+      case 2: return "nd";
+      case 3: return "rd";
+      default: return "th";
+    }
+  }
+
+  function titleCase(s) {
+    return s.replace(/\w\S*/g, function (t) {
+      return t.charAt(0).toUpperCase() + t.substr(1).toLowerCase();
+    });
+  }
+
+  // ---------- Defensive shape validation (not a re-impl of check_contract.py) ----------
+
+  function isValidForecastDoc(data) {
+    if (!data || typeof data !== "object") return false;
+    if (typeof data.location !== "string") return false;
+    if (typeof data.generated_for_date !== "string") return false;
+    if (!data.window || typeof data.window.start_date !== "string" || typeof data.window.end_date !== "string") return false;
+    if (!data.horizon || typeof data.horizon.start_offset !== "number" || typeof data.horizon.end_offset !== "number") return false;
+    if (typeof data.model !== "string") return false;
+    if (typeof data.quantile_target !== "number") return false;
+    if (typeof data.skill_vs_naive !== "number") return false;
+    if (typeof data.wmape !== "number") return false;
+    if (!Array.isArray(data.items) || data.items.length === 0) return false;
+
+    for (var i = 0; i < data.items.length; i++) {
+      var item = data.items[i];
+      if (!item || typeof item.item !== "string") return false;
+      if (!Array.isArray(item.days) || item.days.length === 0) return false;
+      for (var j = 0; j < item.days.length; j++) {
+        var day = item.days[j];
+        if (!day) return false;
+        if (typeof day.date !== "string" || typeof day.dow !== "string") return false;
+        if (typeof day.p10 !== "number" || typeof day.p50 !== "number" ||
+            typeof day.p90 !== "number" || typeof day.plan_for !== "number") return false;
+        if (!Array.isArray(day.why)) return false;
+      }
+    }
+    return true;
+  }
+
+  // ---------- Rendering ----------
+
+  function renderHeader(data) {
+    $("header-location").textContent = data.location;
+    $("header-window").textContent = fmtShortDate(data.window.start_date) + " – " + fmtShortDate(data.window.end_date);
+    $("header-model").textContent = data.model;
+    $("footer-date").textContent = data.generated_for_date;
+
+    var skillEl = $("stat-skill");
+    skillEl.textContent = fmtPercent(data.skill_vs_naive, true);
+    skillEl.classList.toggle("positive", data.skill_vs_naive >= 0);
+    skillEl.classList.toggle("negative", data.skill_vs_naive < 0);
+
+    $("stat-wmape").textContent = fmtPercent(data.wmape, false);
+
+    $("studio-model").textContent = data.model;
+    $("studio-quantile").textContent = (data.quantile_target * 100).toFixed(2) + "%";
+    $("studio-horizon").textContent = "+" + data.horizon.start_offset + " .. +" + data.horizon.end_offset;
+    $("studio-skill").textContent = fmtPercent(data.skill_vs_naive, true);
+    $("studio-wmape").textContent = fmtPercent(data.wmape, false);
+  }
+
+  function renderTabs(data) {
+    var tabsEl = $("tabs");
+    tabsEl.innerHTML = "";
+    // Number of tabs is derived from data.items.length -- not hardcoded.
+    data.items.forEach(function (item, idx) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tab-btn";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", idx === state.selectedItemIndex ? "true" : "false");
+      btn.id = "tab-" + idx;
+      btn.textContent = titleCase(item.item);
+      btn.addEventListener("click", function () {
+        state.selectedItemIndex = idx;
+        state.selectedDayIndex = 0;
+        renderAll(state.data);
+      });
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  function computeItemScale(item) {
+    // Shared y-scale across all days in this item's week: min(p10) .. max(p90).
+    var minP10 = Infinity, maxP90 = -Infinity;
+    item.days.forEach(function (day) {
+      if (day.p10 < minP10) minP10 = day.p10;
+      if (day.p90 > maxP90) maxP90 = day.p90;
+    });
+    if (maxP90 <= minP10) {
+      // Degenerate flat data -- avoid divide-by-zero.
+      maxP90 = minP10 + 1;
+    }
+    return { min: minP10, max: maxP90 };
+  }
+
+  function computeWidthScale(item) {
+    // Relative uncertainty per day: (p90-p10)/p50.
+    var values = item.days.map(function (day) {
+      return day.p50 > 0 ? (day.p90 - day.p10) / day.p50 : 0;
+    });
+    var minV = Math.min.apply(null, values);
+    var maxV = Math.max.apply(null, values);
+    return { min: minV, max: maxV, values: values };
+  }
+
+  function findBusiestDayIndex(item) {
+    // "Most volatile" = largest (p90 - p10).
+    var busiestIdx = 0;
+    var busiestSpread = -Infinity;
+    item.days.forEach(function (day, idx) {
+      var spread = day.p90 - day.p10;
+      if (spread > busiestSpread) {
+        busiestSpread = spread;
+        busiestIdx = idx;
+      }
+    });
+    return busiestIdx;
+  }
+
+  function findSlowestDayIndex(item) {
+    var slowestIdx = 0;
+    var slowestP50 = Infinity;
+    item.days.forEach(function (day, idx) {
+      if (day.p50 < slowestP50) {
+        slowestP50 = day.p50;
+        slowestIdx = idx;
+      }
+    });
+    return slowestIdx;
+  }
+
+  var PLOT_HEIGHT = 180; // px, matches CSS .funnel-plot height
+  var MIN_BAND_WIDTH = 18;
+  var MAX_BAND_WIDTH = 56;
+
+  function valueToY(value, scale) {
+    // Map value in [scale.min, scale.max] to a y offset from bottom (0) to top (PLOT_HEIGHT).
+    var frac = (value - scale.min) / (scale.max - scale.min);
+    return frac * PLOT_HEIGHT;
+  }
+
+  function renderFunnel(data) {
+    var item = data.items[state.selectedItemIndex];
+    var scale = computeItemScale(item);
+    var widthScale = computeWidthScale(item);
+    var busiestIdx = findBusiestDayIndex(item);
+    var reduceMotion = prefersReducedMotion();
+
+    $("funnel-title").textContent = titleCase(item.item) + " -- weekly outlook";
+
+    var strip = $("funnel-strip");
+    strip.innerHTML = "";
+
+    // Number of columns is derived from item.days.length -- not hardcoded (currently 7).
+    item.days.forEach(function (day, idx) {
+      var relUncertainty = widthScale.values[idx];
+      var widthFrac;
+      if (widthScale.max === widthScale.min) {
+        widthFrac = 0.5;
+      } else {
+        widthFrac = (relUncertainty - widthScale.min) / (widthScale.max - widthScale.min);
+      }
+      var bandWidth = MIN_BAND_WIDTH + widthFrac * (MAX_BAND_WIDTH - MIN_BAND_WIDTH);
+
+      var topY = valueToY(day.p90, scale);
+      var bottomY = valueToY(day.p10, scale);
+      var p50Y = valueToY(day.p50, scale);
+      var fullHeight = topY - bottomY;
+
+      var colBtn = document.createElement("button");
+      colBtn.type = "button";
+      colBtn.className = "funnel-col-btn";
+      if (idx === busiestIdx) colBtn.classList.add("busiest");
+      colBtn.setAttribute("aria-pressed", idx === state.selectedDayIndex ? "true" : "false");
+      colBtn.setAttribute(
+        "aria-label",
+        day.dow + " " + fmtShortDateSlash(day.date) +
+        ": p10 " + day.p10 + ", p50 " + day.p50 + ", p90 " + day.p90 +
+        (idx === busiestIdx ? " (most volatile day)" : "")
+      );
+
+      var plot = document.createElement("div");
+      plot.className = "funnel-plot";
+
+      var band = document.createElement("div");
+      band.className = "funnel-band";
+      band.style.width = bandWidth + "px";
+      band.style.left = "calc(50% - " + (bandWidth / 2) + "px)";
+
+      if (reduceMotion) {
+        band.style.bottom = bottomY + "px";
+        band.style.top = "auto";
+        band.style.height = fullHeight + "px";
+      } else {
+        // Start collapsed at the p50 line, animate outward to full extent.
+        band.style.bottom = (p50Y) + "px";
+        band.style.top = "auto";
+        band.style.height = "0px";
+      }
+
+      var dot = document.createElement("div");
+      dot.className = "funnel-dot";
+      dot.style.bottom = p50Y + "px";
+      // .funnel-dot uses left:50% + transform already for x-centering; set bottom via top calc.
+      dot.style.top = "auto";
+
+      var labelP50 = document.createElement("div");
+      labelP50.className = "funnel-label p50-label";
+      labelP50.textContent = "p50 " + day.p50;
+      labelP50.style.bottom = (p50Y - 2) + "px";
+      labelP50.style.top = "auto";
+
+      var labelP10 = document.createElement("div");
+      labelP10.className = "funnel-label";
+      labelP10.textContent = "p10 " + day.p10;
+      labelP10.style.bottom = Math.max(bottomY - 8, 4) + "px";
+      labelP10.style.top = "auto";
+
+      var labelP90 = document.createElement("div");
+      labelP90.className = "funnel-label";
+      labelP90.textContent = "p90 " + day.p90;
+      labelP90.style.bottom = Math.min(topY + 8, PLOT_HEIGHT - 4) + "px";
+      labelP90.style.top = "auto";
+
+      plot.appendChild(band);
+      plot.appendChild(labelP10);
+      plot.appendChild(labelP90);
+      plot.appendChild(dot);
+      plot.appendChild(labelP50);
+
+      var dayLabel = document.createElement("div");
+      dayLabel.className = "funnel-day-label";
+      dayLabel.textContent = day.dow;
+
+      var dateLabel = document.createElement("div");
+      dateLabel.className = "funnel-date-label mono";
+      dateLabel.textContent = fmtShortDateSlash(day.date);
+
+      colBtn.appendChild(plot);
+      colBtn.appendChild(dayLabel);
+      colBtn.appendChild(dateLabel);
+
+      colBtn.addEventListener("click", function () {
+        state.selectedDayIndex = idx;
+        renderTabsAriaOnly();
+        renderFunnelSelectionOnly();
+        renderDetail(data);
+      });
+
+      strip.appendChild(colBtn);
+
+      // Trigger the grow-from-p50 animation on next frame (unless reduced motion).
+      if (!reduceMotion) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            band.style.bottom = bottomY + "px";
+            band.style.height = fullHeight + "px";
+          });
+        });
+      }
+    });
+  }
+
+  function renderTabsAriaOnly() {
+    var data = state.data;
+    data.items.forEach(function (item, idx) {
+      var btn = $("tab-" + idx);
+      if (btn) btn.setAttribute("aria-selected", idx === state.selectedItemIndex ? "true" : "false");
+    });
+  }
+
+  function renderFunnelSelectionOnly() {
+    var buttons = document.querySelectorAll("#funnel-strip .funnel-col-btn");
+    buttons.forEach(function (btn, idx) {
+      btn.setAttribute("aria-pressed", idx === state.selectedDayIndex ? "true" : "false");
+    });
+  }
+
+  function renderDetail(data) {
+    var item = data.items[state.selectedItemIndex];
+    var day = item.days[state.selectedDayIndex];
+    var dayTitle = titleCase(item.item) + " -- " + day.dow + " " + fmtShortDate(day.date);
+
+    $("plan-day-title").textContent = dayTitle;
+    $("plan-p10").textContent = day.p10;
+    $("plan-p50").textContent = day.p50;
+    $("plan-p90").textContent = day.p90;
+    $("plan-for-headline").textContent = "Plan for " + day.plan_for;
+
+    var percentile = data.quantile_target * 100;
+    var roundedPercentile = Math.round(percentile);
+    $("plan-note").textContent =
+      "Plan for " + day.plan_for + " -- covers the " + roundedPercentile + ordinalSuffix(roundedPercentile) +
+      " percentile of likely demand.";
+
+    $("why-day-title").textContent = dayTitle;
+    var whyList = $("why-list");
+    whyList.innerHTML = "";
+    day.why.forEach(function (entry) {
+      var li = document.createElement("li");
+
+      var arrow = document.createElement("span");
+      arrow.className = "why-arrow " + (entry.direction === "up" ? "up" : "down");
+      arrow.textContent = entry.direction === "up" ? "▲" : "▼";
+      arrow.setAttribute("aria-hidden", "true");
+
+      var text = document.createElement("span");
+      text.className = "why-text";
+      text.textContent = entry.text;
+
+      var contrib = document.createElement("span");
+      contrib.className = "why-contribution mono";
+      contrib.textContent = fmtSignedNumber(entry.contribution);
+
+      li.appendChild(arrow);
+      li.appendChild(text);
+      li.appendChild(contrib);
+      whyList.appendChild(li);
+    });
+    if (day.why.length === 0) {
+      var empty = document.createElement("li");
+      empty.textContent = "No contributing factors recorded for this day.";
+      whyList.appendChild(empty);
+    }
+  }
+
+  function renderTable(data) {
+    var head = $("weekly-table-head");
+    head.innerHTML = "";
+    var thItem = document.createElement("th");
+    thItem.textContent = "Item";
+    head.appendChild(thItem);
+
+    // Day columns derived from the first item's days (assumes all items share the same week).
+    var referenceDays = data.items[0].days;
+    referenceDays.forEach(function (day) {
+      var th = document.createElement("th");
+      th.textContent = day.dow + " " + fmtShortDateSlash(day.date);
+      head.appendChild(th);
+    });
+    var thTotal = document.createElement("th");
+    thTotal.textContent = "Week total";
+    head.appendChild(thTotal);
+
+    var body = $("weekly-table-body");
+    body.innerHTML = "";
+    data.items.forEach(function (item) {
+      var tr = document.createElement("tr");
+      var tdName = document.createElement("td");
+      tdName.className = "item-name";
+      tdName.textContent = titleCase(item.item);
+      tr.appendChild(tdName);
+
+      var total = 0;
+      item.days.forEach(function (day) {
+        var td = document.createElement("td");
+        td.className = "mono-cell";
+        td.textContent = day.p50;
+        tr.appendChild(td);
+        total += day.p50;
+      });
+
+      var tdTotal = document.createElement("td");
+      tdTotal.className = "week-total";
+      tdTotal.textContent = total;
+      tr.appendChild(tdTotal);
+
+      body.appendChild(tr);
+    });
+  }
+
+  function renderVoucher(data) {
+    var item = data.items[state.selectedItemIndex];
+    var slowestIdx = findSlowestDayIndex(item);
+    var slowDay = item.days[slowestIdx];
+
+    $("voucher-message").textContent =
+      titleCase(item.item) + ": " + slowDay.dow + " " + fmtShortDate(slowDay.date) +
+      " looks quiet (p50 " + slowDay.p50 + ") -- send a voucher nudge to drive traffic?";
+
+    var btn = $("voucher-btn");
+    btn.onclick = function () {
+      window.alert("Voucher nudge queued for " + titleCase(item.item) + " on " + slowDay.dow + " " + fmtShortDate(slowDay.date) + ". (Illustrative only -- not wired to a real send.)");
+    };
+  }
+
+  function renderAll(data) {
+    renderTabs(data);
+    renderFunnel(data);
+    renderDetail(data);
+    renderVoucher(data);
+  }
+
+  function showApp() {
+    $("empty-state").hidden = true;
+    $("app-root").hidden = false;
+  }
+
+  function showEmptyState(detailMessage) {
+    $("app-root").hidden = true;
+    $("empty-state").hidden = false;
+    $("empty-state-detail").textContent = detailMessage || "";
+  }
+
+  function init() {
+    fetch("forecast_latest.json")
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status + " fetching forecast_latest.json");
+        }
+        return response.json();
+      })
+      .then(function (data) {
+        if (!isValidForecastDoc(data)) {
+          showEmptyState("Loaded JSON did not match the expected forecast shape.");
+          return;
+        }
+        state.data = data;
+        state.selectedItemIndex = 0;
+        state.selectedDayIndex = 0;
+        renderHeader(data);
+        renderAll(data);
+        renderTable(data);
+        showApp();
+      })
+      .catch(function (err) {
+        showEmptyState(
+          "Could not load forecast_latest.json (" + err.message + "). " +
+          "This is often a file:// CORS restriction -- serve the ui/ folder over HTTP instead."
+        );
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>

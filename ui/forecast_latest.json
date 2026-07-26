@@ -1,0 +1,510 @@
+{
+  "location": "demo_location",
+  "generated_for_date": "2026-07-26",
+  "window": {
+    "start_date": "2026-08-02",
+    "end_date": "2026-08-08"
+  },
+  "horizon": {
+    "start_offset": 7,
+    "end_offset": 13
+  },
+  "model": "factor_model_v1",
+  "quantile_target": 0.6666666666666666,
+  "skill_vs_naive": 0.10650284679382394,
+  "wmape": 0.1495595192615968,
+  "items": [
+    {
+      "item": "burger",
+      "days": [
+        {
+          "date": "2026-08-02",
+          "dow": "Sun",
+          "p10": 24,
+          "p50": 28,
+          "p90": 32,
+          "plan_for": 30,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Sunday)",
+              "contribution": 4.027730392156864
+            }
+          ]
+        },
+        {
+          "date": "2026-08-03",
+          "dow": "Mon",
+          "p10": 17,
+          "p50": 20,
+          "p90": 24,
+          "plan_for": 22,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Monday)",
+              "contribution": -3.653446078431371
+            }
+          ]
+        },
+        {
+          "date": "2026-08-04",
+          "dow": "Tue",
+          "p10": 15,
+          "p50": 19,
+          "p90": 23,
+          "plan_for": 21,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Tuesday)",
+              "contribution": -3.649916666666665
+            },
+            {
+              "factor": "weather",
+              "direction": "down",
+              "text": "Rain expected -- demand slightly suppressed (weather down-weighted at +7..+13)",
+              "contribution": -1.1854958333333332
+            }
+          ]
+        },
+        {
+          "date": "2026-08-05",
+          "dow": "Wed",
+          "p10": 18,
+          "p50": 22,
+          "p90": 26,
+          "plan_for": 23,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Wednesday)",
+              "contribution": -2.3957990196078405
+            }
+          ]
+        },
+        {
+          "date": "2026-08-06",
+          "dow": "Thu",
+          "p10": 16,
+          "p50": 20,
+          "p90": 24,
+          "plan_for": 22,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Thursday)",
+              "contribution": -4.244034313725488
+            }
+          ]
+        },
+        {
+          "date": "2026-08-07",
+          "dow": "Fri",
+          "p10": 24,
+          "p50": 29,
+          "p90": 34,
+          "plan_for": 31,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Friday)",
+              "contribution": 4.7653774509803934
+            }
+          ]
+        },
+        {
+          "date": "2026-08-08",
+          "dow": "Sat",
+          "p10": 24,
+          "p50": 29,
+          "p90": 34,
+          "plan_for": 31,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Saturday)",
+              "contribution": 4.863972222222224
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "item": "fries",
+      "days": [
+        {
+          "date": "2026-08-02",
+          "dow": "Sun",
+          "p10": 30,
+          "p50": 35,
+          "p90": 41,
+          "plan_for": 38,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Sunday)",
+              "contribution": 7.708073529411765
+            }
+          ]
+        },
+        {
+          "date": "2026-08-03",
+          "dow": "Mon",
+          "p10": 19,
+          "p50": 24,
+          "p90": 29,
+          "plan_for": 26,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Monday)",
+              "contribution": -3.4595735294117644
+            }
+          ]
+        },
+        {
+          "date": "2026-08-04",
+          "dow": "Tue",
+          "p10": 15,
+          "p50": 21,
+          "p90": 26,
+          "plan_for": 23,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Tuesday)",
+              "contribution": -5.587220588235294
+            },
+            {
+              "factor": "weather",
+              "direction": "down",
+              "text": "Rain expected -- demand slightly suppressed (weather down-weighted at +7..+13)",
+              "contribution": -1.4430375
+            }
+          ]
+        },
+        {
+          "date": "2026-08-05",
+          "dow": "Wed",
+          "p10": 16,
+          "p50": 22,
+          "p90": 27,
+          "plan_for": 24,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Wednesday)",
+              "contribution": -5.718985294117647
+            }
+          ]
+        },
+        {
+          "date": "2026-08-06",
+          "dow": "Thu",
+          "p10": 17,
+          "p50": 23,
+          "p90": 29,
+          "plan_for": 26,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Thursday)",
+              "contribution": -4.350749999999999
+            }
+          ]
+        },
+        {
+          "date": "2026-08-07",
+          "dow": "Fri",
+          "p10": 26,
+          "p50": 33,
+          "p90": 40,
+          "plan_for": 36,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Friday)",
+              "contribution": 5.123955882352941
+            }
+          ]
+        },
+        {
+          "date": "2026-08-08",
+          "dow": "Sat",
+          "p10": 26,
+          "p50": 34,
+          "p90": 41,
+          "plan_for": 37,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Saturday)",
+              "contribution": 5.935361111111112
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "item": "salad",
+      "days": [
+        {
+          "date": "2026-08-02",
+          "dow": "Sun",
+          "p10": 34,
+          "p50": 40,
+          "p90": 47,
+          "plan_for": 43,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Sunday)",
+              "contribution": 5.3292107843137275
+            }
+          ]
+        },
+        {
+          "date": "2026-08-03",
+          "dow": "Mon",
+          "p10": 23,
+          "p50": 29,
+          "p90": 35,
+          "plan_for": 32,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Monday)",
+              "contribution": -5.631377450980389
+            }
+          ]
+        },
+        {
+          "date": "2026-08-04",
+          "dow": "Tue",
+          "p10": 23,
+          "p50": 29,
+          "p90": 35,
+          "plan_for": 31,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Tuesday)",
+              "contribution": -4.391377450980389
+            },
+            {
+              "factor": "weather",
+              "direction": "down",
+              "text": "Rain expected -- demand slightly suppressed (weather down-weighted at +7..+13)",
+              "contribution": -1.7483041666666665
+            }
+          ]
+        },
+        {
+          "date": "2026-08-05",
+          "dow": "Wed",
+          "p10": 25,
+          "p50": 31,
+          "p90": 38,
+          "plan_for": 34,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Wednesday)",
+              "contribution": -3.782553921568624
+            }
+          ]
+        },
+        {
+          "date": "2026-08-06",
+          "dow": "Thu",
+          "p10": 23,
+          "p50": 30,
+          "p90": 37,
+          "plan_for": 33,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Thursday)",
+              "contribution": -5.252553921568624
+            }
+          ]
+        },
+        {
+          "date": "2026-08-07",
+          "dow": "Fri",
+          "p10": 33,
+          "p50": 42,
+          "p90": 50,
+          "plan_for": 45,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Friday)",
+              "contribution": 6.6856813725490225
+            }
+          ]
+        },
+        {
+          "date": "2026-08-08",
+          "dow": "Sat",
+          "p10": 33,
+          "p50": 42,
+          "p90": 50,
+          "plan_for": 45,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Saturday)",
+              "contribution": 6.651694444444448
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "item": "soda",
+      "days": [
+        {
+          "date": "2026-08-02",
+          "dow": "Sun",
+          "p10": 44,
+          "p50": 52,
+          "p90": 60,
+          "plan_for": 55,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Sunday)",
+              "contribution": 10.840215686274504
+            }
+          ]
+        },
+        {
+          "date": "2026-08-03",
+          "dow": "Mon",
+          "p10": 28,
+          "p50": 35,
+          "p90": 42,
+          "plan_for": 38,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Monday)",
+              "contribution": -5.62801960784314
+            }
+          ]
+        },
+        {
+          "date": "2026-08-04",
+          "dow": "Tue",
+          "p10": 25,
+          "p50": 33,
+          "p90": 40,
+          "plan_for": 36,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Tuesday)",
+              "contribution": -6.287431372549024
+            },
+            {
+              "factor": "weather",
+              "direction": "down",
+              "text": "Rain expected -- demand slightly suppressed (weather down-weighted at +7..+13)",
+              "contribution": -2.0537833333333335
+            }
+          ]
+        },
+        {
+          "date": "2026-08-05",
+          "dow": "Wed",
+          "p10": 25,
+          "p50": 32,
+          "p90": 40,
+          "plan_for": 36,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Wednesday)",
+              "contribution": -8.583901960784319
+            }
+          ]
+        },
+        {
+          "date": "2026-08-06",
+          "dow": "Thu",
+          "p10": 27,
+          "p50": 35,
+          "p90": 43,
+          "plan_for": 39,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "down",
+              "text": "Weekday (Thursday)",
+              "contribution": -5.708019607843141
+            }
+          ]
+        },
+        {
+          "date": "2026-08-07",
+          "dow": "Fri",
+          "p10": 39,
+          "p50": 49,
+          "p90": 58,
+          "plan_for": 53,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Friday)",
+              "contribution": 7.655509803921563
+            }
+          ]
+        },
+        {
+          "date": "2026-08-08",
+          "dow": "Sat",
+          "p10": 38,
+          "p50": 48,
+          "p90": 58,
+          "plan_for": 53,
+          "why": [
+            {
+              "factor": "day_of_week",
+              "direction": "up",
+              "text": "Weekend (Saturday)",
+              "contribution": 7.283222222222218
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
