@@ -5,19 +5,22 @@ A self-learning agent that forecasts short-horizon restaurant food demand as a
 grading itself against what actually sold. See `../PRD.md` for full product
 context.
 
-**This build is on Phase 4 "Forecast model"** (see PRD.md section 14):
+**This build is on Phase 6 "Self-learning loop"** (see PRD.md section 14):
 Phase 1 shipped a runnable skeleton with a config loader and a `/health`
 check; Phase 2 added the `SalesConnector` interface, a CSV connector, the
 feature store, and a synthetic dev-data generator; Phase 3 added the
 `SignalProvider` interface, holiday/weather/event providers, and the
 `merge_signals` broadcast step (see "Feature store schema" and "Signal
-columns" below); Phase 4 adds the model registry, a transparent factor
+columns" below); Phase 4 added the model registry, a transparent factor
 model producing P10/P50/P90 with attribution, a walk-forward backtest
 (wMAPE + skill-vs-naive), a synthetic future-signal generator for
 dev/demo/backtest use, and the `forecast_latest.json` output writer (see
-"Forecast model" below). There is no self-learning loop (forecast log,
-actuals ingestion, recalibration) and no Maritime wiring yet — those
-arrive in later roadmap phases.
+"Forecast model" below); Phase 5 added the owner-facing UI (see "Owner UI"
+below); Phase 6 adds the self-learning loop — an append-only forecast
+log, actuals ingestion, error attribution, safety-railed recalibration of
+the factor model's weights, and a skill scorecard (see "Self-learning
+loop" below). There is no Maritime wiring yet — that arrives in a later
+roadmap phase.
 
 ## Install
 
@@ -303,3 +306,257 @@ in `[0.5, 0.9]`; clamped to `p10`/`p90` outside `[0.1, 0.9]`. Monotonic by
 construction since `p10 <= p50 <= p90`, with no scipy/normal-inverse-CDF
 dependency needed. Feed it `AgentConfig.critical_fractile` to get the
 cost-optimal `plan_for` number shown to the owner.
+
+## Owner UI
+
+`ui/forecast.html` is a self-contained, single-file owner-facing view of
+`forecast_latest.json` -- no build step, no npm/bundler, no external JS
+files (inline `<style>`/`<script>` only; the only external resource is the
+Google Fonts CDN). It renders the header stats, a dish-tab funnel strip
+(P10/P50/P90 per day), a "why this number" attribution panel, a weekly P50
+table, and an illustrative slow-day voucher callout -- all derived at
+runtime from the fetched JSON, not hardcoded. This is a pure frontend
+add-on; it does not change anything under `app/`, `tests/`, `config.yaml`,
+or the `forecast_latest.json` contract itself.
+
+### Regenerating `app/output/forecast_latest.json`
+
+Follow the Phase 4 pipeline documented above under "Forecast model": fit a
+registered `ForecastModel` (e.g. `factor_model_v1`) on feature-store
+history, `predict()` over the +7..+13 horizon, then call
+`app/output/writer.py`'s `build_forecast_document(...)` and
+`write_forecast_json(document)` (defaults to `app/output/forecast_latest.json`).
+See `app/models/base.py`, `app/models/factor_model.py`, and
+`app/output/writer.py` for the exact functions, and the "Output writer and
+the `forecast_latest.json` contract" section above for the JSON shape.
+
+### Refreshing the UI's copy of the JSON
+
+The UI reads `ui/forecast_latest.json` (a copy, kept alongside the HTML so
+`fetch()` can resolve it with a relative path). After regenerating the real
+file, refresh the copy:
+
+```bash
+# from the repo root
+cp app/output/forecast_latest.json ui/forecast_latest.json
+```
+
+(PowerShell: `Copy-Item app/output/forecast_latest.json ui/forecast_latest.json -Force`)
+
+### Opening `ui/forecast.html`
+
+Because the page loads its data via `fetch('forecast_latest.json')`, some
+browsers (notably Chrome) block that fetch under `file://` due to CORS,
+even though the file sits right next to the HTML. If you open
+`ui/forecast.html` directly by double-clicking it and see an inline "could
+not load forecast data" message instead of the dashboard, serve the `ui/`
+folder over a local static server instead:
+
+```bash
+cd ui
+python -m http.server
+```
+
+Then visit `http://localhost:8000/forecast.html` in your browser.
+
+### Validating the JSON contract
+
+`ui/check_contract.py` is a standalone stdlib-only script (no pandas/
+pydantic/app dependencies) that validates a `forecast_latest.json` file
+against the contract documented above -- required keys, types, `date`/`dow`
+formats, `p10 <= p50 <= p90`, and `why`-entry shape -- and exits non-zero
+with a specific error on any violation:
+
+```bash
+python ui/check_contract.py                              # checks ui/forecast_latest.json
+python ui/check_contract.py app/output/forecast_latest.json  # checks the real Phase 4 output
+```
+
+On success it prints a one-line summary ending in `OK` and exits `0`; on
+failure it prints the specific key/item/day/field that failed to stderr
+and exits `1`.
+
+## Self-learning loop
+
+Phase 6 adds `app/learning/` (PRD.md section 6.4): an append-only
+forecast log, actuals ingestion, error attribution, safety-railed
+recalibration of the factor model's three learned weights, and a skill
+scorecard — the loop that lets the agent grade itself against what
+actually sold and get more accurate over time.
+
+```
+predict() ─► ForecastLog (append)
+                                       ActualsStore (upsert, webhook)
+                                                │
+                          join_forecast_actuals ┘
+                                │
+                    attribute_error (per-factor)
+                                │
+                          recalibrate()
+                                │
+                   WeightsStore.put(...) (append new version)
+                                │
+                  FactorModel(weights=...) ◄── next predict() cycle
+                                │
+                        Scorecard.append(...)
+```
+
+All four stores (`ForecastLog`, `ActualsStore`, `WeightsStore`,
+`Scorecard`) are backed by simple, human-auditable JSON Lines files (one
+JSON object per line, plain `json`/`pathlib`, no new dependency):
+
+- **`app/learning/forecast_log.py::ForecastLog`** — append-only log of
+  every forecast ever produced, keyed conceptually by `(location, date,
+  item, generated_for_date)`. Multiple entries legitimately exist for the
+  same `(location, date, item)` across different `generated_for_date`
+  values, since the rolling +7..+13 horizon re-forecasts the same
+  calendar day daily as it approaches — this is a log, not an upsert
+  store; nothing is ever overwritten. `p10/p50/p90` are kept at full
+  float precision (this is a separate, internal, higher-precision record
+  for the learning loop only — it is not the Phase-4
+  `forecast_latest.json` contract file, which is untouched and still does
+  its own int-rounding independently). `append(predictions,
+  generated_for_date, weights_version, model_name)` writes one line per
+  row of a `ForecastModel.predict`-shaped DataFrame; `read(location=None,
+  date_range=None)` reads rows back (optionally filtered by location
+  and/or an inclusive range on the forecasted `date`), with `attribution`
+  deserialized back into a Python list of dicts.
+- **`app/learning/actuals.py::ActualsStore`** — realized sales, *upserted*
+  keyed by `(location, date, item)` (unlike `ForecastLog`, there is
+  exactly one true actual per key, so a later ingest legitimately
+  overwrites — e.g. a corrected point-of-sale reconciliation — matching
+  `FeatureStore`'s own upsert semantics). `ingest(rows)` takes `location,
+  date, item, qty_sold`; `read(location, date_range)` mirrors
+  `FeatureStore.query`'s shape. `join_forecast_actuals(forecast_rows,
+  actuals_rows)` inner-joins logged forecasts with actuals on `(location,
+  date, item)`, adding `actual_qty` (renamed from `qty_sold`), `error =
+  actual_qty - p50`, and `abs_error = abs(error)` — rows with no actual
+  yet or no forecast logged are dropped, the correct semantics for a
+  "graded forecasts" frame.
+- **`app/learning/weights_store.py::WeightsStore`** — append-only,
+  versioned history of the three recalibratable weights
+  (`holiday_weight, event_weight, rain_weight`). `put`/`rollback_to`
+  never mutate or delete a prior record, they always append a new
+  version, so any past version stays retrievable via `get(version)`
+  forever — a caller can reconstruct the exact `FactorModel(weights=...)`
+  that produced any historical forecast. `latest()`/`get(version)`/
+  `history()` read back; `put(weights, reason)` appends version
+  `latest().version + 1`; `rollback_to(version)` appends a *new* record
+  reproducing an old version's weights (so the rollback itself is a new,
+  auditable event), distinct from just calling `get(version)` directly to
+  reuse old weights without recording anything.
+- **`app/learning/scorecard.py::Scorecard`** — append-only skill history,
+  one row per recalibration cycle: `append(cycle_date, wmape,
+  skill_vs_naive, weights_version)`, `read()` returns all entries sorted
+  by date ascending.
+
+### Error attribution (`app/learning/attribution.py`)
+
+Two functions:
+
+- **`reconcile_forecast_row(model, location, item, target_date, p50, why,
+  tolerance=1e-6)`** — independently verifies that a logged forecast
+  row's `why`/`attribution` list fully accounts for its `p50`, using the
+  new `FactorModel.baseline_for(location, item, target_date)` accessor
+  (computed from the model's fitted state — level, trend,
+  weekly_seasonal — independently of `why`/`p50`) as ground truth. Returns
+  `(reconstructed_p50, is_consistent)` where `reconstructed_p50 =
+  baseline_for(...) + sum(contribution for contribution in why)` (clamped
+  at `0.0` to match `predict()`'s own `max(0.0, ...)` clamp) and
+  `is_consistent = abs(reconstructed_p50 - p50) <= tolerance`. This is a
+  real check, not a tautology: if a future factor were ever added to
+  `predict()` but its contribution omitted from `why`, this reconciliation
+  would catch the shortfall.
+- **`attribute_error(row)`** — apportions a graded forecast's `error`
+  (`actual_qty - p50`) across the recalibratable factors
+  (`"holiday", "event", "weather"` — **not** `day_of_week`, which has no
+  scalar weight of its own; it is re-fit fresh from history on every
+  `fit()` call, already a form of continuous recalibration) present in
+  that row's `why` list, proportional to each factor's share of total
+  recalibratable-contribution magnitude: `share_f = |contribution_f| /
+  sum(|contribution_g| for active g)`, `factor_error_f = error *
+  share_f`. Returns a dict with a key only for factors that were active
+  (nonzero contribution) in that row — an absent key means "not active
+  for this row", distinct from a `0.0` value meaning "active with zero
+  apportioned error". Returns `{}` if no recalibratable factor was active
+  (e.g. a plain weekday with no holiday/event/rain).
+
+**Sign convention (the crux of recalibrating in the right direction):**
+`recalibrate.py` combines `attribute_error`'s output with each factor's
+own `contribution` sign via `direction_signal_f = factor_error_f *
+sign(contribution_f)`.
+- `direction_signal_f > 0` — the factor pushed the forecast in some
+  direction, and the actual missed *even further* in that same
+  direction: the factor's effect was too **weak** → **increase** that
+  weight.
+- `direction_signal_f < 0` — the factor's effect ran against (or wasn't
+  supported by) the realized miss: the factor's effect was too
+  **strong** → **decrease** that weight's magnitude, floored at `0.0`
+  (a weight must stay non-negative — a negative `holiday_weight`, for
+  example, would mean holidays *suppress* demand, inverting the factor's
+  documented meaning).
+
+Worked example: `holiday_contribution = +5.0`, `error = +8.0` (actual
+came in even higher than the already-holiday-boosted p50) → `holiday`
+is under-weighted, `direction_signal > 0`, increase `holiday_weight`.
+Conversely `weather_contribution = -3.0`, `error = +2.0` (actual still
+came in above the already-suppressed p50) → rain's suppression was too
+strong, `direction_signal < 0`, decrease `rain_weight`.
+
+### Recalibration (`app/learning/recalibrate.py`)
+
+`recalibrate(graded_rows, current_weights, max_step=0.10,
+min_samples=5, gentle_fraction=0.3, drift_window=10,
+drift_threshold=0.15, learning_rate=0.5) -> {"new_weights": {...},
+"updates": {...}}` computes a new weights dict from graded (forecast vs.
+actual) history under five hard safety rails, entirely deterministic (no
+randomness) given the same inputs:
+
+| Rail | Default | Protects against |
+|---|---|---|
+| `min_samples` | `5` | Updating a weight off too little evidence — a factor with fewer than `min_samples` active rows is left **completely unchanged** (not even a zero-sized update; identical bit-for-bit to `current_weights`). |
+| `max_step` | `0.10` (10%) | A single cycle ever moving a weight too far, regardless of how strong the raw error signal looks — the largest *relative* change a weight may take in one recalibration. |
+| `gentle_fraction` | `0.3` | Overreacting to routine noise — normal (non-drift) cycles are capped at `max_step * gentle_fraction` (3%), so weights drift slowly absent a persistent signal. |
+| `drift_window` / `drift_threshold` | `10` / `0.15` | Under-reacting to a real, persistent shift — if the mean of the most recent `drift_window` per-row normalized signals exceeds `drift_threshold` in magnitude, the full `max_step` (not just the gentle fraction) is unlocked for that cycle. |
+| Non-negative floor | `0.0` | A weight ever going negative, which would invert the factor's documented meaning (see the sign convention above). Flooring at `0.0` can only pull a proposed step *smaller* in magnitude, never larger, so it can never itself push the actual applied step past `max_step`. |
+
+Each per-row signal is `direction_signal_f` (see the sign convention
+above) normalized by `max(abs(row.p50), epsilon)` into a small
+dimensionless number before averaging — `learning_rate` then scales the
+mean signal into a proposed relative weight change, which is clamped to
+the cycle's applicable step cap (`max_step` or the gentle fraction) and
+applied as `new_weight = max(0.0, current_weight * (1 +
+relative_delta))`. The returned `"updates"` dict always has an entry for
+every one of the three weight keys (`applied_step=0.0, drift=False` when
+guarded/unchanged), so a caller can audit exactly what happened — and
+didn't happen — each cycle.
+
+### `FactorModel(weights=...)` and `baseline_for`
+
+To make recalibrated weights actually usable, `app/models/factor_model.py`
+gained (Phase 6, fully backward-compatible — `FactorModel()` with no
+arguments behaves exactly as before):
+
+- A module-level `DEFAULT_WEIGHTS = {"holiday_weight": HOLIDAY_WEIGHT,
+  "event_weight": EVENT_WEIGHT, "rain_weight": RAIN_WEIGHT}`, packaging
+  the three recalibratable constants for injection.
+  **`WEATHER_CONTRIBUTION_CAP` is deliberately excluded** and can never
+  become recalibratable — it's a fixed policy rail (weather is
+  down-weighted at +7..+13 by design, PRD.md section 5/9), not a learned
+  parameter. Recalibration may adjust *how strongly* rain suppresses
+  demand (`rain_weight`), never the hard ceiling on that suppression.
+- `FactorModel(weights: dict[str, float] | None = None)` — `None` (the
+  default) reproduces the original fixed-constant behavior exactly;
+  passing any subset of `{"holiday_weight", "event_weight",
+  "rain_weight"}` overrides those keys (others fall back to
+  `DEFAULT_WEIGHTS`). This is the hook the recalibration loop uses to
+  `fit()`/`predict()` with a previously-persisted or newly-recalibrated
+  weights version (`WeightsStore`) without needing a new `ForecastModel`
+  subclass.
+- `baseline_for(location, item, target_date) -> float` — returns the
+  fitted `level + trend * day_index` baseline for one row, with no
+  factor contributions added, sharing its computation with `predict()`
+  via a private `_baseline` helper (so there is exactly one
+  implementation of "baseline"). Used by `reconcile_forecast_row` above
+  as an independent ground truth. Raises the same `ValueError` as
+  `predict()` for an unfitted `(location, item)`.

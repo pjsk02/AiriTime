@@ -79,6 +79,27 @@ EVENT_WEIGHT = 0.15
 # below -- see that constant's docstring for why.
 RAIN_WEIGHT = 0.20
 
+# Packages the three RECALIBRATABLE weight constants above for injection
+# into `FactorModel(weights=...)` (Phase 6, app/learning/recalibrate.py).
+# `HOLIDAY_WEIGHT`/`EVENT_WEIGHT`/`RAIN_WEIGHT` above remain the module's
+# own fixed defaults (unchanged, still used whenever a caller constructs
+# `FactorModel()` with no `weights` argument) -- this dict is just their
+# packaged form so a learned/persisted weights version can be handed to
+# the model without editing this module.
+#
+# `WEATHER_CONTRIBUTION_CAP` is DELIBERATELY EXCLUDED from this dict and
+# must never become recalibratable. Recalibration may adjust HOW STRONGLY
+# rain suppresses demand (`rain_weight`, the raw pre-cap magnitude above),
+# but the +/-5%-of-level ceiling on that suppression (WEATHER_CONTRIBUTION_CAP)
+# is a hard, non-learned safety rail -- PRD.md section 5/9 mandates that
+# weather is down-weighted at the +7..+13 horizon *by design*, not as
+# something the self-learning loop is allowed to widen back open.
+DEFAULT_WEIGHTS: dict[str, float] = {
+    "holiday_weight": HOLIDAY_WEIGHT,
+    "event_weight": EVENT_WEIGHT,
+    "rain_weight": RAIN_WEIGHT,
+}
+
 # Weather is down-weighted at the +7..+13 horizon (PRD.md section 5: "Weather
 # is down-weighted at the +7..+13 horizon and re-weighted as the day
 # nears"; section 9: "Weather is unreliable at +7..+13 -- down-weight it
@@ -196,9 +217,23 @@ class FactorModel(ForecastModel):
     as `MODEL_REGISTRY["factor_model_v1"]` at the bottom of this module.
     """
 
-    def __init__(self) -> None:
-        """Start with no fitted groups; `fit()` must be called before `predict()`."""
+    def __init__(self, weights: dict[str, float] | None = None) -> None:
+        """Start with no fitted groups; `fit()` must be called before `predict()`.
+
+        Args:
+            weights: optional override for `{"holiday_weight", "event_weight",
+                "rain_weight"}` (any subset; missing keys fall back to
+                `DEFAULT_WEIGHTS`). None (the default) reproduces this
+                model's original fixed-constant behavior exactly -- every
+                caller that constructs `FactorModel()` with no arguments,
+                including all pre-Phase-6 tests, is unaffected. This is the
+                hook Phase 6's recalibration loop uses to fit/predict with a
+                previously-persisted or newly-recalibrated weights version
+                (see app/learning/weights_store.py) without needing a new
+                ForecastModel subclass.
+        """
         self._groups: dict[tuple[str, str], _GroupState] = {}
+        self.weights: dict[str, float] = {**DEFAULT_WEIGHTS, **(weights or {})}
 
     def fit(self, history: pd.DataFrame) -> None:
         """Fit per-(location, item) level/trend/weekly-seasonal/residual-sigma state.
@@ -248,6 +283,38 @@ class FactorModel(ForecastModel):
                 residual_sigma=sigma,
             )
 
+    def _baseline(self, state: _GroupState, row_date: date) -> float:
+        """Shared `level + trend * day_index` computation for one fitted group/date.
+
+        `day_index` continues the same numbering `fit()` used (days since
+        the group's `earliest_date`), so `trend` extrapolates forward
+        correctly past the fitted window. Used by both `predict()` and
+        `baseline_for()` so there is exactly one implementation of
+        "baseline" in this class, not two kept in sync by hand.
+        """
+        day_index = (row_date - state.earliest_date).days
+        return state.level + state.trend * day_index
+
+    def baseline_for(self, location: str, item: str, target_date: date) -> float:
+        """Return the fitted level+trend baseline (no factor contributions) for one row.
+
+        Independent accessor used by app/learning/attribution.py to verify
+        that a logged forecast's `p50` truly reconstructs as
+        `baseline_for(...) + sum(c["contribution"] for c in why)` -- i.e. that
+        the persisted "why" list is a complete, non-lossy decomposition of
+        p50, not just self-consistent by definition. Raises the same
+        ValueError as `predict()` for an unfitted (location, item).
+        """
+        key = (location, item)
+        state = self._groups.get(key)
+        if state is None:
+            raise ValueError(
+                f"FactorModel.baseline_for: no fitted state for (location, item) "
+                f"= {key!r} -- fit() was never called with history for this "
+                "combination; refusing to extrapolate a nonsense prediction"
+            )
+        return self._baseline(state, target_date)
+
     def predict(self, future_features: pd.DataFrame, reference_today: date) -> pd.DataFrame:
         """Forecast p10/p50/p90 with attribution for each (location, date, item) row.
 
@@ -287,23 +354,22 @@ class FactorModel(ForecastModel):
                     "combination; refusing to extrapolate a nonsense prediction"
                 )
 
-            day_index = (row_date - state.earliest_date).days
-            baseline = state.level + state.trend * day_index
+            baseline = self._baseline(state, row_date)
 
             weekday = row_date.weekday()
             dow_contribution = state.weekly_seasonal.get(weekday, 0.0)
 
             is_holiday = _safe_bool(row.is_holiday)
             holiday_name = _safe_str(row.holiday_name)
-            holiday_contribution = HOLIDAY_WEIGHT * state.level * float(is_holiday)
+            holiday_contribution = self.weights["holiday_weight"] * state.level * float(is_holiday)
             include_holiday = is_holiday or bool(holiday_name)
 
             event_impact = _safe_float(row.event_impact)
-            event_contribution = EVENT_WEIGHT * state.level * event_impact
+            event_contribution = self.weights["event_weight"] * state.level * event_impact
             include_event = event_impact > 0
 
             is_rain = _safe_bool(row.is_rain)
-            raw_weather = -RAIN_WEIGHT * state.level * float(is_rain)
+            raw_weather = -self.weights["rain_weight"] * state.level * float(is_rain)
             weather_cap = WEATHER_CONTRIBUTION_CAP * state.level
             weather_contribution = float(np.clip(raw_weather, -weather_cap, weather_cap))
             include_weather = abs(weather_contribution) > _ATTRIBUTION_EPSILON
