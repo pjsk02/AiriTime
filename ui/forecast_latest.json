@@ -11,8 +11,8 @@
   },
   "model": "factor_model_v1",
   "quantile_target": 0.6666666666666666,
-  "skill_vs_naive": 0.10650284679382394,
-  "wmape": 0.1495595192615968,
+  "skill_vs_naive": 0.17136016108025076,
+  "wmape": 0.14011913215522565,
   "items": [
     {
       "item": "burger",
