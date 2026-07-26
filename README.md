@@ -47,6 +47,43 @@ curl http://localhost:8080/health
 # {"status":"ok"}
 ```
 
+## Service / Docker
+
+Beyond `/health`, the service exposes three endpoints (`app/main.py`, backed by
+`app/service/pipeline.py`, which composes the existing pipeline/learning
+callables — no model or learning logic is duplicated there):
+
+- `POST /run` — runs the same synthetic-data pipeline as
+  `scripts/generate_demo_forecast.py` (fit `FactorModel`, walk-forward
+  backtest, predict the +7..+13 window) and (re)writes
+  `app/output/forecast_latest.json`. Returns a summary:
+  `{location, window, model, wmape, skill_vs_naive, n_items}`.
+- `POST /actuals` — accepts realized sales in the same shape
+  `ActualsStore.ingest` expects (`{"rows": [{"location", "date", "item",
+  "qty_sold"}, ...]}`), persists them via `ActualsStore`, and returns
+  `{"ingested_rows": <n>}`.
+- `GET /forecast/latest` — returns the current `forecast_latest.json` as
+  JSON; 404s with a clear message if `/run` hasn't been called yet.
+
+### Build and run the container
+
+```bash
+docker build -t airiwheels-service .
+docker run --rm -p 8080:8080 airiwheels-service
+```
+
+Then, from another terminal:
+
+```bash
+curl http://localhost:8080/health
+# {"status":"ok"}
+curl -X POST http://localhost:8080/run
+curl http://localhost:8080/forecast/latest
+```
+
+The container runs uvicorn on port 8080, uses only synthetic data (no real
+POS/network calls), and bakes in no secrets.
+
 ## Config
 
 `config.yaml` holds engineer-plane placeholders for the rolling horizon
