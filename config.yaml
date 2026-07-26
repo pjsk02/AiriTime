@@ -1,0 +1,23 @@
+# AiriWheels demand-forecast agent — engineer-plane config (Phase 1 placeholders).
+# See PRD.md sections 5, 6.6, and 14 (roadmap phase 1: Scaffold).
+
+# Rolling horizon: we serve days +7..+13 from "today" (PRD section 5).
+horizon_start: 7
+horizon_end: 13
+
+# Model registry selection (placeholder; registry doesn't exist until Phase 4).
+model_name: factor_model_v1
+
+# Factor toggles for the factor model (placeholders; no factor logic yet).
+factors:
+  day_of_week: true
+  holidays: true
+  events: true
+  weather: false
+  loyalty: false
+
+# Newsvendor cost ratio inputs -> q* = Cu / (Cu + Co) (PRD section 5).
+# Cu: cost of under-prep (stockout / lost margin).
+# Co: cost of over-prep (wasted food).
+cost_underprep: 2.0
+cost_overprep: 1.0
